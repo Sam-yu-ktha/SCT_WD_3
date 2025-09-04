@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic-Tac-Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 40px;
+      color: #fff;
+      background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      min-height: 100vh;
+    }
+
+    @keyframes gradientBG {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      text-shadow: 0 0 8px #000;
+    }
+
+    #status {
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      text-shadow: 0 0 5px #000;
+    }
+
+    #modeSelector {
+      margin-bottom: 20px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 5px;
+    }
+
+    .cell {
+      background-color: #444;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.5em;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+      box-shadow: inset 0 0 5px #000;
+    }
+
+    .cell:hover {
+      background-color: #555;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background-color: #0a84ff;
+      color: white;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    button:hover {
+      background-color: #0066cc;
+    }
+
+    /* Popup Styles */
+    #popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      display: none; /* hidden by default */
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    .popup-content {
+      background-color: #fff;
+      color: #333;
+      padding: 30px 40px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1.5em;
+      box-shadow: 0 0 15px #0a84ff;
+      animation: zoomIn 0.4s ease;
+      min-width: 280px;
+    }
+
+    .popup-content button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 1em;
+      border: none;
+      background-color: #0a84ff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease;
+    }
+
+    .popup-content button:hover {
+      background-color: #0066cc;
+    }
+
+    @keyframes zoomIn {
+      from {
+        transform: scale(0.8);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Tic-Tac-Toe</h1>
+
+  <div id="modeSelector">
+    <label>
+      <input type="radio" name="mode" value="pvp" checked /> Player vs Player
+    </label>
+    <label style="margin-left: 20px;">
+      <input type="radio" name="mode" value="pvc" /> Player vs Computer
+    </label>
+  </div>
+
+  <div id="status">Player X's turn</div>
+
+  <div id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <button id="restartBtn">Restart Game</button>
+
+  <!-- Popup Message -->
+  <div id="popup">
+    <div class="popup-content">
+      <p id="popupMessage"></p>
+      <button id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const status = document.getElementById('status');
+    const restartBtn = document.getElementById('restartBtn');
+    const popup = document.getElementById('popup');
+    const popupMessage = document.getElementById('popupMessage');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+    const modeSelector = document.getElementsByName('mode');
+
+    let boardState = Array(9).fill(null);
+    let currentPlayer = 'X';
+    let gameActive = true;
+    let mode = 'pvp'; // default Player vs Player
+
+    function checkWin() {
+      const winConditions = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+
+      for (const condition of winConditions) {
+        const [a, b, c] = condition;
+        if (
+          boardState[a] &&
+          boardState[a] === boardState[b] &&
+          boardState[a] === boardState[c]
+        ) {
+          // Highlight winning cells
+          [a, b, c].forEach(i => {
+            document.querySelector(`.cell[data-index="${i}"]`).style.backgroundColor = '#2ecc71';
+          });
+          return boardState[a];
+        }
+      }
+      return null;
+    }
+
+    function checkDraw() {
+      return boardState.every(cell => cell !== null);
+    }
+
+    function makeMove(index) {
+      if (boardState[index] !== null || !gameActive) return false;
+      boardState[index] = currentPlayer;
+      document.querySelector(`.cell[data-index="${index}"]`).textContent = currentPlayer;
+      return true;
+    }
+
+    function computerMove() {
+      let emptyIndices = [];
+      boardState.forEach((cell, idx) => {
+        if (cell === null) emptyIndices.push(idx);
+      });
+
+      if (emptyIndices.length === 0) return;
+
+      const randomIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+      makeMove(randomIndex);
+    }
+
+    function nextTurn() {
+      const winner = checkWin();
+      if (winner) {
+        showPopup(`🎉 Player ${winner} wins!`);
+        return;
+      }
+
+      if (checkDraw()) {
+        showPopup("🤝 It's a draw!");
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      status.textContent = `Player ${currentPlayer}'s turn`;
+
+      if (mode === 'pvc' && currentPlayer === 'O' && gameActive) {
+        setTimeout(() => {
+          computerMove();
+          const winnerAfterAI = checkWin();
+          if (winnerAfterAI) {
+            showPopup(`🎉 Player ${winnerAfterAI} wins!`);
+            return;
+          }
+          if (checkDraw()) {
+            showPopup("🤝 It's a draw!");
+            return;
+          }
+          currentPlayer = 'X';
+          status.textContent = `Player ${currentPlayer}'s turn`;
+        }, 500);
+      }
+    }
+
+    function handleClick(e) {
+      const cell = e.target;
+      if (!cell.classList.contains('cell')) return;
+      const index = parseInt(cell.getAttribute('data-index'));
+
+      if (mode === 'pvp') {
+        if (makeMove(index)) nextTurn();
+      } else if (mode === 'pvc') {
+        if (currentPlayer === 'X' && makeMove(index)) nextTurn();
+      }
+    }
+
+    function resetGame() {
+      boardState = Array(9).fill(null);
+      currentPlayer = 'X';
+      gameActive = true;
+      status.textContent = `Player ${currentPlayer}'s turn`;
+      document.querySelectorAll('.cell').forEach(cell => {
+        cell.textContent = '';
+        cell.style.backgroundColor = '#444';
+      });
+      hidePopup();
+    }
+
+    function showPopup(message) {
+      popupMessage.textContent = message;
+      popup.style.display = 'flex';
+      gameActive = false;
+    }
+
+    function hidePopup() {
+      popup.style.display = 'none';
+    }
+
+    board.addEventListener('click', handleClick);
+    restartBtn.addEventListener('click', resetGame);
+    playAgainBtn.addEventListener('click', resetGame);
+
+    modeSelector.forEach(radio => {
+      radio.addEventListener('change', e => {
+        mode = e.target.value;
+        resetGame();
+      });
+    });
+
+  </script>
+
+</body>
+</html>
